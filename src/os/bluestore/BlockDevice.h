@@ -2,7 +2,7 @@
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
-  *
+ *
  * Copyright (C) 2015 XSky <haomai@xsky.com>
  *
  * Author: Haomai Wang <haomaiwang@gmail.com>
@@ -33,37 +33,36 @@
 #if defined(HAVE_LIBAIO) || defined(HAVE_POSIXAIO)
 #include "ceph_aio.h"
 #endif
-#include "include/ceph_assert.h"
 #include "include/buffer.h"
+#include "include/ceph_assert.h"
 #include "include/interval_set.h"
 #define SPDK_PREFIX "spdk:"
 
 #if defined(__linux__)
 #if !defined(F_SET_FILE_RW_HINT)
 #define F_LINUX_SPECIFIC_BASE 1024
-#define F_SET_FILE_RW_HINT         (F_LINUX_SPECIFIC_BASE + 14)
+#define F_SET_FILE_RW_HINT (F_LINUX_SPECIFIC_BASE + 14)
 #endif
 // These values match Linux definition
 // https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/uapi/linux/fcntl.h#n56
-#define  WRITE_LIFE_NOT_SET  	0 	// No hint information set
-#define  WRITE_LIFE_NONE  	1       // No hints about write life time
-#define  WRITE_LIFE_SHORT  	2       // Data written has a short life time
-#define  WRITE_LIFE_MEDIUM  	3    	// Data written has a medium life time
-#define  WRITE_LIFE_LONG  	4       // Data written has a long life time
-#define  WRITE_LIFE_EXTREME  	5     	// Data written has an extremely long life time
-#define  WRITE_LIFE_MAX  	6
+#define WRITE_LIFE_NOT_SET 0 // No hint information set
+#define WRITE_LIFE_NONE 1    // No hints about write life time
+#define WRITE_LIFE_SHORT 2   // Data written has a short life time
+#define WRITE_LIFE_MEDIUM 3  // Data written has a medium life time
+#define WRITE_LIFE_LONG 4    // Data written has a long life time
+#define WRITE_LIFE_EXTREME 5 // Data written has an extremely long life time
+#define WRITE_LIFE_MAX 6
 #else
-// On systems don't have WRITE_LIFE_* only use one FD 
+// On systems don't have WRITE_LIFE_* only use one FD
 // And all files are created equal
-#define  WRITE_LIFE_NOT_SET  	0 	// No hint information set
-#define  WRITE_LIFE_NONE  	0       // No hints about write life time
-#define  WRITE_LIFE_SHORT  	0       // Data written has a short life time
-#define  WRITE_LIFE_MEDIUM  	0    	// Data written has a medium life time
-#define  WRITE_LIFE_LONG  	0       // Data written has a long life time
-#define  WRITE_LIFE_EXTREME  	0    	// Data written has an extremely long life time
-#define  WRITE_LIFE_MAX  	1
+#define WRITE_LIFE_NOT_SET 0 // No hint information set
+#define WRITE_LIFE_NONE 0    // No hints about write life time
+#define WRITE_LIFE_SHORT 0   // Data written has a short life time
+#define WRITE_LIFE_MEDIUM 0  // Data written has a medium life time
+#define WRITE_LIFE_LONG 0    // Data written has a long life time
+#define WRITE_LIFE_EXTREME 0 // Data written has an extremely long life time
+#define WRITE_LIFE_MAX 1
 #endif
-
 
 /// track in-flight io
 struct IOContext {
@@ -73,7 +72,7 @@ private:
   int r = 0;
 
 public:
-  CephContext* cct;
+  CephContext *cct;
   void *priv;
 #ifdef HAVE_SPDK
   void *nvme_task_first = nullptr;
@@ -82,24 +81,21 @@ public:
 #endif
 
 #if defined(HAVE_LIBAIO) || defined(HAVE_POSIXAIO)
-  std::list<aio_t> pending_aios;    ///< not yet submitted
-  std::list<aio_t> running_aios;    ///< submitting or submitted
+  std::list<aio_t> pending_aios; ///< not yet submitted
+  std::list<aio_t> running_aios; ///< submitting or submitted
 #endif
   std::atomic_int num_pending = {0};
   std::atomic_int num_running = {0};
   bool allow_eio;
 
-  explicit IOContext(CephContext* cct, void *p, bool allow_eio = false)
-    : cct(cct), priv(p), allow_eio(allow_eio)
-    {}
+  explicit IOContext(CephContext *cct, void *p, bool allow_eio = false)
+      : cct(cct), priv(p), allow_eio(allow_eio) {}
 
   // no copying
-  IOContext(const IOContext& other) = delete;
-  IOContext &operator=(const IOContext& other) = delete;
+  IOContext(const IOContext &other) = delete;
+  IOContext &operator=(const IOContext &other) = delete;
 
-  bool has_pending_aios() {
-    return num_pending.load();
-  }
+  bool has_pending_aios() { return num_pending.load(); }
   void release_running_aios();
   void aio_wait();
   uint64_t get_num_ios() const;
@@ -118,23 +114,19 @@ public:
     }
   }
 
-  void set_return_value(int _r) {
-    r = _r;
-  }
+  void set_return_value(int _r) { r = _r; }
 
-  int get_return_value() const {
-    return r;
-  }
+  int get_return_value() const { return r; }
 };
-
 
 class BlockDevice {
 public:
-  CephContext* cct;
+  CephContext *cct;
   typedef void (*aio_callback_t)(void *handle, void *aio);
+
 private:
   ceph::mutex ioc_reap_lock = ceph::make_mutex("BlockDevice::ioc_reap_lock");
-  std::vector<IOContext*> ioc_reap_queue;
+  std::vector<IOContext *> ioc_reap_queue;
   std::atomic_int ioc_reap_count = {0};
 
 protected:
@@ -147,24 +139,20 @@ protected:
 public:
   aio_callback_t aio_callback;
   void *aio_callback_priv;
-  BlockDevice(CephContext* cct, aio_callback_t cb, void *cbpriv)
-  : cct(cct),
-    aio_callback(cb),
-    aio_callback_priv(cbpriv)
- {}
+  BlockDevice(CephContext *cct, aio_callback_t cb, void *cbpriv)
+      : cct(cct), aio_callback(cb), aio_callback_priv(cbpriv) {}
   virtual ~BlockDevice() = default;
 
-  static BlockDevice *create(
-    CephContext* cct, const std::string& path, aio_callback_t cb, void *cbpriv, aio_callback_t d_cb, void *d_cbpriv);
+  static BlockDevice *create(CephContext *cct, const std::string &path,
+                             aio_callback_t cb, void *cbpriv,
+                             aio_callback_t d_cb, void *d_cbpriv);
   virtual bool supported_bdev_label() { return true; }
   virtual bool is_rotational() { return rotational; }
 
   virtual void aio_submit(IOContext *ioc) = 0;
 
-  void set_no_exclusive_lock() {
-    lock_exclusive = false;
-  }
-  
+  void set_no_exclusive_lock() { lock_exclusive = false; }
+
   uint64_t get_size() const { return size; }
   uint64_t get_block_size() const { return block_size; }
 
@@ -173,11 +161,11 @@ public:
     return false;
   }
 
-  virtual int collect_metadata(const std::string& prefix, std::map<std::string,std::string> *pm) const = 0;
+  virtual int
+  collect_metadata(const std::string &prefix,
+                   std::map<std::string, std::string> *pm) const = 0;
 
-  virtual int get_devname(std::string *out) const {
-    return -ENOENT;
-  }
+  virtual int get_devname(std::string *out) const { return -ENOENT; }
   virtual int get_devices(std::set<std::string> *ls) const {
     std::string s;
     if (get_devname(&s) == 0) {
@@ -185,38 +173,19 @@ public:
     }
     return 0;
   }
-  virtual int get_numa_node(int *node) const {
-    return -EOPNOTSUPP;
-  }
+  virtual int get_numa_node(int *node) const { return -EOPNOTSUPP; }
 
-  virtual int read(
-    uint64_t off,
-    uint64_t len,
-    bufferlist *pbl,
-    IOContext *ioc,
-    bool buffered) = 0;
-  virtual int read_random(
-    uint64_t off,
-    uint64_t len,
-    char *buf,
-    bool buffered) = 0;
-  virtual int write(
-    uint64_t off,
-    bufferlist& bl,
-    bool buffered,
-    int write_hint = WRITE_LIFE_NOT_SET) = 0;
+  virtual int read(uint64_t off, uint64_t len, bufferlist *pbl, IOContext *ioc,
+                   bool buffered) = 0;
+  virtual int read_random(uint64_t off, uint64_t len, char *buf,
+                          bool buffered) = 0;
+  virtual int write(uint64_t off, bufferlist &bl, bool buffered,
+                    int write_hint = WRITE_LIFE_NOT_SET) = 0;
 
-  virtual int aio_read(
-    uint64_t off,
-    uint64_t len,
-    bufferlist *pbl,
-    IOContext *ioc) = 0;
-  virtual int aio_write(
-    uint64_t off,
-    bufferlist& bl,
-    IOContext *ioc,
-    bool buffered,
-    int write_hint = WRITE_LIFE_NOT_SET) = 0;
+  virtual int aio_read(uint64_t off, uint64_t len, bufferlist *pbl,
+                       IOContext *ioc) = 0;
+  virtual int aio_write(uint64_t off, bufferlist &bl, IOContext *ioc,
+                        bool buffered, int write_hint = WRITE_LIFE_NOT_SET) = 0;
   virtual int flush() = 0;
   virtual int discard(uint64_t offset, uint64_t len) { return 0; }
   virtual int queue_discard(interval_set<uint64_t> &to_release) { return -1; }
@@ -227,17 +196,14 @@ public:
 
   // for managing buffered readers/writers
   virtual int invalidate_cache(uint64_t off, uint64_t len) = 0;
-  virtual int open(const std::string& path) = 0;
+  virtual int open(const std::string &path) = 0;
   virtual void close() = 0;
 
 protected:
   bool is_valid_io(uint64_t off, uint64_t len) const {
-    return (off % block_size == 0 &&
-            len % block_size == 0 &&
-            len > 0 &&
-            off < size &&
-            off + len <= size);
+    return (off % block_size == 0 && len % block_size == 0 && len > 0 &&
+            off < size && off + len <= size);
   }
 };
 
-#endif //CEPH_OS_BLUESTORE_BLOCKDEVICE_H
+#endif // CEPH_OS_BLUESTORE_BLOCKDEVICE_H

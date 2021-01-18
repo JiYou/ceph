@@ -19,14 +19,14 @@
 
 #include <atomic>
 
-#include "os/fs/FS.h"
-#include "include/interval_set.h"
-#include "ceph_aio.h"
 #include "BlockDevice.h"
+#include "ceph_aio.h"
+#include "include/interval_set.h"
+#include "os/fs/FS.h"
 
 class PMEMDevice : public BlockDevice {
   int fd;
-  char *addr; //the address of mmap
+  char *addr; // the address of mmap
   std::string path;
 
   ceph::mutex debug_lock = ceph::make_mutex("PMEMDevice::debug_lock");
@@ -38,23 +38,22 @@ class PMEMDevice : public BlockDevice {
 public:
   PMEMDevice(CephContext *cct, aio_callback_t cb, void *cbpriv);
 
-
   void aio_submit(IOContext *ioc) override;
 
-  int collect_metadata(const std::string& prefix, map<std::string,std::string> *pm) const override;
+  int collect_metadata(const std::string &prefix,
+                       map<std::string, std::string> *pm) const override;
 
-  int read(uint64_t off, uint64_t len, bufferlist *pbl,
-	   IOContext *ioc,
-	   bool buffered) override;
+  int read(uint64_t off, uint64_t len, bufferlist *pbl, IOContext *ioc,
+           bool buffered) override;
   int aio_read(uint64_t off, uint64_t len, bufferlist *pbl,
-	       IOContext *ioc) override;
+               IOContext *ioc) override;
 
-  int read_random(uint64_t off, uint64_t len, char *buf, bool buffered) override;
-  int write(uint64_t off, bufferlist& bl, bool buffered, int write_hint = WRITE_LIFE_NOT_SET) override;
-  int aio_write(uint64_t off, bufferlist& bl,
-		IOContext *ioc,
-		bool buffered,
-		int write_hint = WRITE_LIFE_NOT_SET) override;
+  int read_random(uint64_t off, uint64_t len, char *buf,
+                  bool buffered) override;
+  int write(uint64_t off, bufferlist &bl, bool buffered,
+            int write_hint = WRITE_LIFE_NOT_SET) override;
+  int aio_write(uint64_t off, bufferlist &bl, IOContext *ioc, bool buffered,
+                int write_hint = WRITE_LIFE_NOT_SET) override;
   int flush() override;
 
   // for managing buffered readers/writers
@@ -64,9 +63,7 @@ public:
 
 private:
   bool is_valid_io(uint64_t off, uint64_t len) const {
-    return (len > 0 &&
-            off < size &&
-            off + len <= size);
+    return (len > 0 && off < size && off + len <= size);
   }
 };
 

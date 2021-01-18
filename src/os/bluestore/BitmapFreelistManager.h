@@ -6,8 +6,8 @@
 
 #include "FreelistManager.h"
 
-#include <string>
 #include <mutex>
+#include <string>
 
 #include "common/ceph_mutex.h"
 #include "include/buffer.h"
@@ -24,8 +24,8 @@ class BitmapFreelistManager : public FreelistManager {
   uint64_t bytes_per_key;   ///< bytes per key/value pair
   uint64_t blocks;          ///< size of device (blocks, size rounded up)
 
-  uint64_t block_mask;  ///< mask to convert byte offset to block offset
-  uint64_t key_mask;    ///< mask to convert offset to key offset
+  uint64_t block_mask; ///< mask to convert byte offset to block offset
+  uint64_t key_mask;   ///< mask to convert offset to key offset
 
   bufferlist all_set_bl;
 
@@ -40,23 +40,20 @@ class BitmapFreelistManager : public FreelistManager {
 
   void _init_misc();
 
-  void _verify_range(KeyValueDB *kvdb,
-    uint64_t offset, uint64_t length, int val);
-  void _xor(
-    uint64_t offset, uint64_t length,
-    KeyValueDB::Transaction txn);
+  void _verify_range(KeyValueDB *kvdb, uint64_t offset, uint64_t length,
+                     int val);
+  void _xor(uint64_t offset, uint64_t length, KeyValueDB::Transaction txn);
 
 public:
-  BitmapFreelistManager(CephContext* cct, string meta_prefix,
-			string bitmap_prefix);
+  BitmapFreelistManager(CephContext *cct, string meta_prefix,
+                        string bitmap_prefix);
 
   static void setup_merge_operator(KeyValueDB *db, string prefix);
 
   int create(uint64_t size, uint64_t granularity,
-	     KeyValueDB::Transaction txn) override;
-
-  int expand(uint64_t new_size,
              KeyValueDB::Transaction txn) override;
+
+  int expand(uint64_t new_size, KeyValueDB::Transaction txn) override;
 
   int init(KeyValueDB *kvdb) override;
   void shutdown() override;
@@ -64,25 +61,19 @@ public:
   void dump(KeyValueDB *kvdb) override;
 
   void enumerate_reset() override;
-  bool enumerate_next(KeyValueDB *kvdb, uint64_t *offset, uint64_t *length) override;
+  bool enumerate_next(KeyValueDB *kvdb, uint64_t *offset,
+                      uint64_t *length) override;
 
-  void allocate(
-    uint64_t offset, uint64_t length,
-    KeyValueDB::Transaction txn) override;
-  void release(
-    uint64_t offset, uint64_t length,
-    KeyValueDB::Transaction txn) override;
+  void allocate(uint64_t offset, uint64_t length,
+                KeyValueDB::Transaction txn) override;
+  void release(uint64_t offset, uint64_t length,
+               KeyValueDB::Transaction txn) override;
 
-  inline uint64_t get_size() const override {
-    return size;
-  }
+  inline uint64_t get_size() const override { return size; }
   inline uint64_t get_alloc_units() const override {
     return size / bytes_per_block;
   }
-  inline uint64_t get_alloc_size() const override {
-    return bytes_per_block;
-  }
-
+  inline uint64_t get_alloc_size() const override { return bytes_per_block; }
 };
 
 #endif

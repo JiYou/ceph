@@ -17,16 +17,15 @@
 
 #include <atomic>
 
-#include "include/types.h"
-#include "include/interval_set.h"
 #include "common/Thread.h"
+#include "include/interval_set.h"
+#include "include/types.h"
 #include "include/utime.h"
 
-#include "ceph_aio.h"
 #include "BlockDevice.h"
+#include "ceph_aio.h"
 
 #define RW_IO_MAX (INT_MAX & CEPH_PAGE_MASK)
-
 
 class KernelDevice : public BlockDevice {
   std::vector<int> fd_directs, fd_buffereds;
@@ -34,10 +33,10 @@ class KernelDevice : public BlockDevice {
   std::string path;
   bool aio, dio;
 
-  int vdo_fd = -1;      ///< fd for vdo sysfs directory
+  int vdo_fd = -1; ///< fd for vdo sysfs directory
   string vdo_name;
 
-  std::string devname;  ///< kernel dev name (/sys/block/$devname), if any
+  std::string devname; ///< kernel dev name (/sys/block/$devname), if any
 
   ceph::mutex debug_lock = ceph::make_mutex("KernelDevice::debug_lock");
   interval_set<uint64_t> debug_inflight;
@@ -91,7 +90,7 @@ class KernelDevice : public BlockDevice {
   void _aio_log_start(IOContext *ioc, uint64_t offset, uint64_t length);
   void _aio_log_finish(IOContext *ioc, uint64_t offset, uint64_t length);
 
-  int _sync_write(uint64_t off, bufferlist& bl, bool buffered, int write_hint);
+  int _sync_write(uint64_t off, bufferlist &bl, bool buffered, int write_hint);
 
   int _lock();
 
@@ -99,22 +98,25 @@ class KernelDevice : public BlockDevice {
 
   // stalled aio debugging
   aio_list_t debug_queue;
-  ceph::mutex debug_queue_lock = ceph::make_mutex("KernelDevice::debug_queue_lock");
+  ceph::mutex debug_queue_lock =
+      ceph::make_mutex("KernelDevice::debug_queue_lock");
   aio_t *debug_oldest = nullptr;
   utime_t debug_stall_since;
-  void debug_aio_link(aio_t& aio);
-  void debug_aio_unlink(aio_t& aio);
+  void debug_aio_link(aio_t &aio);
+  void debug_aio_unlink(aio_t &aio);
 
   void _detect_vdo();
   int choose_fd(bool buffered, int write_hint) const;
 
 public:
-  KernelDevice(CephContext* cct, aio_callback_t cb, void *cbpriv, aio_callback_t d_cb, void *d_cbpriv);
+  KernelDevice(CephContext *cct, aio_callback_t cb, void *cbpriv,
+               aio_callback_t d_cb, void *d_cbpriv);
 
   void aio_submit(IOContext *ioc) override;
   void discard_drain() override;
 
-  int collect_metadata(const std::string& prefix, map<std::string,std::string> *pm) const override;
+  int collect_metadata(const std::string &prefix,
+                       map<std::string, std::string> *pm) const override;
   int get_devname(std::string *s) const override {
     if (devname.empty()) {
       return -ENOENT;
@@ -126,24 +128,23 @@ public:
 
   bool get_thin_utilization(uint64_t *total, uint64_t *avail) const override;
 
-  int read(uint64_t off, uint64_t len, bufferlist *pbl,
-	   IOContext *ioc,
-	   bool buffered) override;
+  int read(uint64_t off, uint64_t len, bufferlist *pbl, IOContext *ioc,
+           bool buffered) override;
   int aio_read(uint64_t off, uint64_t len, bufferlist *pbl,
-	       IOContext *ioc) override;
-  int read_random(uint64_t off, uint64_t len, char *buf, bool buffered) override;
+               IOContext *ioc) override;
+  int read_random(uint64_t off, uint64_t len, char *buf,
+                  bool buffered) override;
 
-  int write(uint64_t off, bufferlist& bl, bool buffered, int write_hint = WRITE_LIFE_NOT_SET) override;
-  int aio_write(uint64_t off, bufferlist& bl,
-		IOContext *ioc,
-		bool buffered,
-		int write_hint = WRITE_LIFE_NOT_SET) override;
+  int write(uint64_t off, bufferlist &bl, bool buffered,
+            int write_hint = WRITE_LIFE_NOT_SET) override;
+  int aio_write(uint64_t off, bufferlist &bl, IOContext *ioc, bool buffered,
+                int write_hint = WRITE_LIFE_NOT_SET) override;
   int flush() override;
   int discard(uint64_t offset, uint64_t len) override;
 
   // for managing buffered readers/writers
   int invalidate_cache(uint64_t off, uint64_t len) override;
-  int open(const std::string& path) override;
+  int open(const std::string &path) override;
   void close() override;
 };
 

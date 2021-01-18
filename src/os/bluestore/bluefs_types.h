@@ -6,9 +6,9 @@
 #include <optional>
 
 #include "bluestore_types.h"
-#include "include/utime.h"
-#include "include/encoding.h"
 #include "include/denc.h"
+#include "include/encoding.h"
+#include "include/utime.h"
 
 class bluefs_extent_t {
 public:
@@ -17,9 +17,9 @@ public:
   uint8_t bdev;
 
   bluefs_extent_t(uint8_t b = 0, uint64_t o = 0, uint32_t l = 0)
-    : offset(o), length(l), bdev(b) {}
+      : offset(o), length(l), bdev(b) {}
 
-  uint64_t end() const { return  offset + length; }
+  uint64_t end() const { return offset + length; }
   DENC(bluefs_extent_t, v, p) {
     DENC_START(1, 1, p);
     denc_lba(v.offset, p);
@@ -29,11 +29,11 @@ public:
   }
 
   void dump(Formatter *f) const;
-  static void generate_test_instances(list<bluefs_extent_t*>&);
+  static void generate_test_instances(list<bluefs_extent_t *> &);
 };
 WRITE_CLASS_DENC(bluefs_extent_t)
 
-ostream& operator<<(ostream& out, const bluefs_extent_t& e);
+ostream &operator<<(ostream &out, const bluefs_extent_t &e);
 
 struct bluefs_fnode_t {
   uint64_t ino;
@@ -50,34 +50,31 @@ struct bluefs_fnode_t {
 
   bluefs_fnode_t() : ino(0), size(0), __unused__(0), allocated(0) {}
 
-  uint64_t get_allocated() const {
-    return allocated;
-  }
+  uint64_t get_allocated() const { return allocated; }
 
   void recalc_allocated() {
     allocated = 0;
     extents_index.reserve(extents.size());
-    for (auto& p : extents) {
+    for (auto &p : extents) {
       extents_index.emplace_back(allocated);
       allocated += p.length;
     }
   }
 
   DENC_HELPERS
-  void bound_encode(size_t& p) const {
-    _denc_friend(*this, p);
-  }
-  void encode(bufferlist::contiguous_appender& p) const {
+  void bound_encode(size_t &p) const { _denc_friend(*this, p); }
+  void encode(bufferlist::contiguous_appender &p) const {
     DENC_DUMP_PRE(bluefs_fnode_t);
     _denc_friend(*this, p);
   }
-  void decode(buffer::ptr::const_iterator& p) {
+  void decode(buffer::ptr::const_iterator &p) {
     _denc_friend(*this, p);
     recalc_allocated();
   }
-  template<typename T, typename P>
-  friend std::enable_if_t<std::is_same_v<bluefs_fnode_t, std::remove_const_t<T>>>
-  _denc_friend(T& v, P& p) {
+  template <typename T, typename P>
+  friend std::enable_if_t<
+      std::is_same_v<bluefs_fnode_t, std::remove_const_t<T>>>
+  _denc_friend(T &v, P &p) {
     DENC_START(1, 1, p);
     denc_varint(v.ino, p);
     denc_varint(v.size, p);
@@ -87,11 +84,10 @@ struct bluefs_fnode_t {
     DENC_FINISH(p);
   }
 
-  void append_extent(const bluefs_extent_t& ext) {
-    if (!extents.empty() &&
-	extents.back().end() == ext.offset &&
-	extents.back().bdev == ext.bdev &&
-	(uint64_t)extents.back().length + (uint64_t)ext.length < 0xffffffff) {
+  void append_extent(const bluefs_extent_t &ext) {
+    if (!extents.empty() && extents.back().end() == ext.offset &&
+        extents.back().bdev == ext.bdev &&
+        (uint64_t)extents.back().length + (uint64_t)ext.length < 0xffffffff) {
       extents.back().length += ext.length;
     } else {
       extents_index.emplace_back(allocated);
@@ -104,13 +100,13 @@ struct bluefs_fnode_t {
     auto it = extents.begin();
     allocated -= it->length;
     extents_index.erase(extents_index.begin());
-    for (auto& i: extents_index) {
+    for (auto &i : extents_index) {
       i -= it->length;
     }
     extents.erase(it);
   }
-  
-  void swap_extents(bluefs_fnode_t& other) {
+
+  void swap_extents(bluefs_fnode_t &other) {
     other.extents.swap(extents);
     other.extents_index.swap(extents_index);
     std::swap(allocated, other.allocated);
@@ -121,41 +117,38 @@ struct bluefs_fnode_t {
     allocated = 0;
   }
 
-  mempool::bluefs::vector<bluefs_extent_t>::iterator seek(
-    uint64_t off, uint64_t *x_off);
+  mempool::bluefs::vector<bluefs_extent_t>::iterator seek(uint64_t off,
+                                                          uint64_t *x_off);
 
   void dump(Formatter *f) const;
-  static void generate_test_instances(list<bluefs_fnode_t*>& ls);
-
+  static void generate_test_instances(list<bluefs_fnode_t *> &ls);
 };
 WRITE_CLASS_DENC(bluefs_fnode_t)
 
-ostream& operator<<(ostream& out, const bluefs_fnode_t& file);
+ostream &operator<<(ostream &out, const bluefs_fnode_t &file);
 
 struct bluefs_layout_t {
-  unsigned shared_bdev = 0;         ///< which bluefs bdev we are sharing
-  bool dedicated_db = false;        ///< whether block.db is present
-  bool dedicated_wal = false;       ///< whether block.wal is present
+  unsigned shared_bdev = 0;   ///< which bluefs bdev we are sharing
+  bool dedicated_db = false;  ///< whether block.db is present
+  bool dedicated_wal = false; ///< whether block.wal is present
 
-  bool single_shared_device() const {
-    return !dedicated_db && !dedicated_wal;
-  }
+  bool single_shared_device() const { return !dedicated_db && !dedicated_wal; }
 
-  bool operator==(const bluefs_layout_t& other) const {
+  bool operator==(const bluefs_layout_t &other) const {
     return shared_bdev == other.shared_bdev &&
            dedicated_db == other.dedicated_db &&
            dedicated_wal == other.dedicated_wal;
   }
 
-  void encode(ceph::bufferlist& bl) const;
-  void decode(ceph::bufferlist::const_iterator& p);
+  void encode(ceph::bufferlist &bl) const;
+  void decode(ceph::bufferlist::const_iterator &p);
   void dump(Formatter *f) const;
 };
 WRITE_CLASS_ENCODER(bluefs_layout_t)
 
 struct bluefs_super_t {
-  uuid_d uuid;      ///< unique to this bluefs instance
-  uuid_d osd_uuid;  ///< matches the osd that owns us
+  uuid_d uuid;     ///< unique to this bluefs instance
+  uuid_d osd_uuid; ///< matches the osd that owns us
   uint64_t version;
   uint32_t block_size;
 
@@ -163,23 +156,18 @@ struct bluefs_super_t {
 
   std::optional<bluefs_layout_t> memorized_layout;
 
-  bluefs_super_t()
-    : version(0),
-      block_size(4096) { }
+  bluefs_super_t() : version(0), block_size(4096) {}
 
-  uint64_t block_mask() const {
-    return ~((uint64_t)block_size - 1);
-  }
+  uint64_t block_mask() const { return ~((uint64_t)block_size - 1); }
 
-  void encode(bufferlist& bl) const;
-  void decode(bufferlist::const_iterator& p);
+  void encode(bufferlist &bl) const;
+  void decode(bufferlist::const_iterator &p);
   void dump(Formatter *f) const;
-  static void generate_test_instances(list<bluefs_super_t*>& ls);
+  static void generate_test_instances(list<bluefs_super_t *> &ls);
 };
 WRITE_CLASS_ENCODER(bluefs_super_t)
 
-ostream& operator<<(ostream&, const bluefs_super_t& s);
-
+ostream &operator<<(ostream &, const bluefs_super_t &s);
 
 struct bluefs_transaction_t {
   typedef enum {
@@ -197,18 +185,14 @@ struct bluefs_transaction_t {
     OP_JUMP_SEQ,    ///< jump the seq #
   } op_t;
 
-  uuid_d uuid;          ///< fs uuid
-  uint64_t seq;         ///< sequence number
-  bufferlist op_bl;     ///< encoded transaction ops
+  uuid_d uuid;      ///< fs uuid
+  uint64_t seq;     ///< sequence number
+  bufferlist op_bl; ///< encoded transaction ops
 
   bluefs_transaction_t() : seq(0) {}
 
-  void clear() {
-    *this = bluefs_transaction_t();
-  }
-  bool empty() const {
-    return op_bl.length() == 0;
-  }
+  void clear() { *this = bluefs_transaction_t(); }
+  bool empty() const { return op_bl.length() == 0; }
 
   void op_init() {
     using ceph::encode;
@@ -228,30 +212,30 @@ struct bluefs_transaction_t {
     encode(offset, op_bl);
     encode(length, op_bl);
   }
-  void op_dir_create(const string& dir) {
+  void op_dir_create(const string &dir) {
     using ceph::encode;
     encode((__u8)OP_DIR_CREATE, op_bl);
     encode(dir, op_bl);
   }
-  void op_dir_remove(const string& dir) {
+  void op_dir_remove(const string &dir) {
     using ceph::encode;
     encode((__u8)OP_DIR_REMOVE, op_bl);
     encode(dir, op_bl);
   }
-  void op_dir_link(const string& dir, const string& file, uint64_t ino) {
+  void op_dir_link(const string &dir, const string &file, uint64_t ino) {
     using ceph::encode;
     encode((__u8)OP_DIR_LINK, op_bl);
     encode(dir, op_bl);
     encode(file, op_bl);
     encode(ino, op_bl);
   }
-  void op_dir_unlink(const string& dir, const string& file) {
+  void op_dir_unlink(const string &dir, const string &file) {
     using ceph::encode;
     encode((__u8)OP_DIR_UNLINK, op_bl);
     encode(dir, op_bl);
     encode(file, op_bl);
   }
-  void op_file_update(const bluefs_fnode_t& file) {
+  void op_file_update(const bluefs_fnode_t &file) {
     using ceph::encode;
     encode((__u8)OP_FILE_UPDATE, op_bl);
     encode(file, op_bl);
@@ -272,17 +256,15 @@ struct bluefs_transaction_t {
     encode((__u8)OP_JUMP_SEQ, op_bl);
     encode(next_seq, op_bl);
   }
-  void claim_ops(bluefs_transaction_t& from) {
-    op_bl.claim_append(from.op_bl);
-  }
+  void claim_ops(bluefs_transaction_t &from) { op_bl.claim_append(from.op_bl); }
 
-  void encode(bufferlist& bl) const;
-  void decode(bufferlist::const_iterator& p);
+  void encode(bufferlist &bl) const;
+  void decode(bufferlist::const_iterator &p);
   void dump(Formatter *f) const;
-  static void generate_test_instances(list<bluefs_transaction_t*>& ls);
+  static void generate_test_instances(list<bluefs_transaction_t *> &ls);
 };
 WRITE_CLASS_ENCODER(bluefs_transaction_t)
 
-ostream& operator<<(ostream& out, const bluefs_transaction_t& t);
+ostream &operator<<(ostream &out, const bluefs_transaction_t &t);
 
 #endif

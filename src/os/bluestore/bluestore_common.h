@@ -15,15 +15,12 @@
 #ifndef CEPH_OSD_BLUESTORE_COMMON_H
 #define CEPH_OSD_BLUESTORE_COMMON_H
 
-#include "include/intarith.h"
 #include "include/ceph_assert.h"
+#include "include/intarith.h"
 
 template <class Bitset, class Func>
-void apply_for_bitset_range(uint64_t off,
-  uint64_t len,
-  uint64_t granularity,
-  Bitset &bitset,
-  Func f) {
+void apply_for_bitset_range(uint64_t off, uint64_t len, uint64_t granularity,
+                            Bitset &bitset, Func f) {
   auto end = round_up_to(off + len, granularity) / granularity;
   ceph_assert(end <= bitset.size());
   uint64_t pos = off / granularity;
